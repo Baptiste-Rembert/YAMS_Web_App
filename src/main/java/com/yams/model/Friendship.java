@@ -11,7 +11,6 @@ public class Friendship {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: relation entre utilisateurs
 
     public Long getId() {
         return id;

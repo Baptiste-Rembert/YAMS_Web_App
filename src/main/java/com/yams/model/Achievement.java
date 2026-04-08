@@ -11,7 +11,6 @@ public class Achievement {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: définir achievements (nom, description, condition)
 
     public Long getId() {
         return id;

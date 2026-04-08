@@ -11,7 +11,6 @@ public class Turn {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: numéro de tour, joueur, dés lancés
 
     public Long getId() {
         return id;

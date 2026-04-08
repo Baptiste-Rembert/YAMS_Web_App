@@ -11,7 +11,6 @@ public class Game {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: champs et relations
 
     public Long getId() {
         return id;

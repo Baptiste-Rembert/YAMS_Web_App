@@ -11,7 +11,6 @@ public class Scorecard {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: definition des cases et relations
 
     public Long getId() {
         return id;

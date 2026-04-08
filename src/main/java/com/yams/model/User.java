@@ -11,7 +11,6 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: ajouter champs (username, password, email, ...)
 
     public Long getId() {
         return id;

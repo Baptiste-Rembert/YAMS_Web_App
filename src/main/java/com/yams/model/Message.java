@@ -11,7 +11,6 @@ public class Message {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: contenu, auteur, timestamp, partie associée
 
     public Long getId() {
         return id;

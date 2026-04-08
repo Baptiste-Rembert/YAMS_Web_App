@@ -11,7 +11,6 @@ public class Invitation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // TODO: invitation vers salon privé, statut
 
     public Long getId() {
         return id;

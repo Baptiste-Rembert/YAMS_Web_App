@@ -6,5 +6,4 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/leaderboard")
 public class LeaderboardController {
-    // TODO: endpoints pour historique et classement
 }
