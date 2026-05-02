@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5174"})
 public class AuthController {
 
     private final AuthService authService;
@@ -22,8 +22,14 @@ public class AuthController {
     }
 
     @PostMapping("/auth/login")
-    public User login(@RequestBody String username) {
-        return authService.login(username);
+    public User login(@RequestBody User user) {
+        return authService.login(user.getUsername());
+    }
+
+    @PostMapping("/auth/register")
+    public User register(@RequestBody User user) {
+        // For now registration behaves like login: create if not exists
+        return authService.login(user.getUsername());
     }
 
     @GetMapping("/hello")

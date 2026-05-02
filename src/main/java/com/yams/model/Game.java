@@ -11,6 +11,10 @@ public class Game {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private boolean started = false;
+
+    private Long currentPlayerId;
+
 
     public Long getId() {
         return id;
@@ -18,5 +22,21 @@ public class Game {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public boolean isStarted() {
+        return started;
+    }
+
+    public void setStarted(boolean started) {
+        this.started = started;
+    }
+
+    public Long getCurrentPlayerId() {
+        return currentPlayerId;
+    }
+
+    public void setCurrentPlayerId(Long currentPlayerId) {
+        this.currentPlayerId = currentPlayerId;
     }
 }
