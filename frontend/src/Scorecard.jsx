@@ -48,12 +48,12 @@ function computeCategoryScore(dice, category) {
   }
 }
 
-export default function Scorecard({ gameId, playerId, turn }) {
+export default function Scorecard({ gameId, playerId, turn, onScoreMarked, canEndTurn, reloadTrigger }) {
   const [scores, setScores] = useState({})
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => { load(); }, [gameId, playerId])
+  useEffect(() => { load(); }, [gameId, playerId, reloadTrigger])
 
   const load = async () => {
     if (!gameId || !playerId) return
@@ -79,6 +79,7 @@ export default function Scorecard({ gameId, playerId, turn }) {
     try {
       await axios.post(`/api/games/${gameId}/scorecard/${playerId}/score`, { category, score })
       await load()
+      if (typeof onScoreMarked === 'function') onScoreMarked()
     } catch (e) {
       console.error(e)
       alert(e.response?.data || e.message)
@@ -113,10 +114,10 @@ export default function Scorecard({ gameId, playerId, turn }) {
                     <td style={{ padding: '6px 8px' }}>
                       {existing == null ? (
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button disabled={!dice.length || loading} onClick={() => submitScore(cat, expected)}>
+                          <button disabled={!dice.length || loading || canEndTurn} onClick={() => submitScore(cat, expected)}>
                             Mark {expected ?? '-'}
                           </button>
-                          <button disabled={loading} onClick={() => submitScore(cat, 0)}>Forfeit (0)</button>
+                          <button disabled={loading || canEndTurn} onClick={() => submitScore(cat, 0)}>Forfeit (0)</button>
                         </div>
                       ) : (
                         <em>Locked</em>

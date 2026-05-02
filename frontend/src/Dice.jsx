@@ -11,7 +11,7 @@ export default function Dice({ dice = [], selected = [], onToggle }) {
             width: 56,
             height: 56,
             fontSize: 20,
-            background: selected.includes(i) ? '#ffd54f' : '#eee',
+            background: selected.includes(i) ? '#ff0000' : '#000000',
             border: '1px solid #ccc',
             borderRadius: 6,
             cursor: 'pointer'

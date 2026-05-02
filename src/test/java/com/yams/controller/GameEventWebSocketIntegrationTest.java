@@ -5,6 +5,7 @@ import com.yams.model.Game;
 import com.yams.model.Player;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
@@ -40,15 +41,17 @@ public class GameEventWebSocketIntegrationTest {
     void receiveRollEvent() throws Exception {
         String base = "http://localhost:" + port;
 
+        HttpHeaders authHeaders = loginAndGetCookie(base, "dave");
+
         ResponseEntity<Game> createResp = restTemplate.postForEntity(base + "/api/games", null, Game.class);
         assertEquals(200, createResp.getStatusCodeValue());
         Long gameId = createResp.getBody().getId();
 
         String joinBody = "{\"username\":\"dave\"}";
-        ResponseEntity<Player> joinResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/join", new org.springframework.http.HttpEntity<>(joinBody, createJsonHeaders()), Player.class);
+        ResponseEntity<Player> joinResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/join", new org.springframework.http.HttpEntity<>(joinBody, jsonHeaders(authHeaders)), Player.class);
         assertEquals(200, joinResp.getStatusCodeValue());
 
-        ResponseEntity<String> startResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/start", null, String.class);
+        ResponseEntity<String> startResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/start", new org.springframework.http.HttpEntity<>(authHeaders), String.class);
         assertEquals(200, startResp.getStatusCodeValue());
 
         String url = "ws://localhost:" + port + "/ws";
@@ -75,20 +78,37 @@ public class GameEventWebSocketIntegrationTest {
         });
 
         // trigger a roll which should send an event
-        restTemplate.postForEntity(base + "/api/games/" + gameId + "/turns/roll", null, String.class);
+        restTemplate.postForEntity(base + "/api/games/" + gameId + "/turns/roll", new org.springframework.http.HttpEntity<>(authHeaders), String.class);
 
         GameEvent evt = blockingQueue.poll(5, TimeUnit.SECONDS);
         assertNotNull(evt);
-        assertEquals("ROLLED", evt.getType());
+        assertEquals("TURN_ROLLED", evt.getType());
         assertEquals(gameId, evt.getGameId());
         assertTrue(evt.getData().containsKey("dice"));
 
         session.disconnect();
     }
 
-    private org.springframework.http.HttpHeaders createJsonHeaders() {
+    private org.springframework.http.HttpHeaders loginAndGetCookie(String base, String username) {
         org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        ResponseEntity<String> loginResp = restTemplate.postForEntity(base + "/api/auth/login", new org.springframework.http.HttpEntity<>(("{\"username\":\"" + username + "\"}"), headers), String.class);
+        assertEquals(200, loginResp.getStatusCodeValue());
+        org.springframework.http.HttpHeaders cookieHeaders = new org.springframework.http.HttpHeaders();
+        cookieHeaders.add(org.springframework.http.HttpHeaders.COOKIE, extractSessionCookie(loginResp.getHeaders().getFirst(org.springframework.http.HttpHeaders.SET_COOKIE)));
+        return cookieHeaders;
+    }
+
+    private org.springframework.http.HttpHeaders jsonHeaders(org.springframework.http.HttpHeaders cookieHeaders) {
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        headers.putAll(cookieHeaders);
         return headers;
+    }
+
+    private String extractSessionCookie(String setCookieHeader) {
+        if (setCookieHeader == null || setCookieHeader.isBlank()) return null;
+        int separator = setCookieHeader.indexOf(';');
+        return separator >= 0 ? setCookieHeader.substring(0, separator) : setCookieHeader;
     }
 }

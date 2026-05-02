@@ -2,15 +2,20 @@ package com.yams.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.yams.model.Game;
 import com.yams.model.Scorecard;
 import com.yams.model.Player;
 import com.yams.model.GameEvent;
 import com.yams.model.Turn;
+import com.yams.repository.GameRepository;
 import com.yams.repository.ScorecardRepository;
 import com.yams.repository.PlayerRepository;
 import com.yams.repository.TurnRepository;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
@@ -20,14 +25,38 @@ public class ScorecardService {
     private final ScorecardRepository scorecardRepository;
     private final PlayerRepository playerRepository;
     private final TurnRepository turnRepository;
+    private final GameRepository gameRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final GameEventService eventService;
+    private final SessionAuthService sessionAuthService;
 
-    public ScorecardService(ScorecardRepository scorecardRepository, PlayerRepository playerRepository, TurnRepository turnRepository, GameEventService eventService) {
+    public ScorecardService(ScorecardRepository scorecardRepository, PlayerRepository playerRepository, TurnRepository turnRepository, GameRepository gameRepository, GameEventService eventService, SessionAuthService sessionAuthService) {
         this.scorecardRepository = scorecardRepository;
         this.playerRepository = playerRepository;
         this.turnRepository = turnRepository;
+        this.gameRepository = gameRepository;
         this.eventService = eventService;
+        this.sessionAuthService = sessionAuthService;
+    }
+
+    @Transactional
+    public void resetForGame(Long gameId) {
+        List<Scorecard> scs = scorecardRepository.findByGameId(gameId);
+        for (Scorecard sc : scs) {
+            sc.setScores("{}");
+        }
+        scorecardRepository.saveAll(scs);
+
+        // remove existing turns for the game
+        List<Turn> turns = turnRepository.findByGameId(gameId);
+        if (turns != null && !turns.isEmpty()) {
+            turnRepository.deleteAll(turns);
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("gameId", gameId);
+        GameEvent evt = new GameEvent("GAME_RESTARTED", gameId, data);
+        eventService.sendEvent(gameId, evt);
     }
 
     @Transactional
@@ -45,7 +74,9 @@ public class ScorecardService {
     }
 
     @Transactional
-    public Scorecard updateScore(Long gameId, Long playerId, String category, Integer score) {
+    public Scorecard updateScore(Long gameId, Long playerId, String category, Integer score, HttpSession session) {
+        requireCurrentPlayer(gameId, playerId, session);
+
         Scorecard sc = scorecardRepository.findByGameIdAndPlayerId(gameId, playerId)
                 .orElseThrow(() -> new IllegalArgumentException("Scorecard not found"));
 
@@ -83,6 +114,7 @@ public class ScorecardService {
         GameEvent evt = new GameEvent("SCORE_UPDATED", gameId, data);
         eventService.sendEvent(gameId, evt);
 
+        // Score submission saved and event emitted. Turn end is handled by the client UI (user presses End Turn).
         return saved;
     }
 
@@ -120,6 +152,27 @@ public class ScorecardService {
         int total = upperTotal + upperBonus + lowerTotal;
 
         return new ScorecardSummary(map, upperTotal, upperBonus, lowerTotal, total);
+    }
+
+    private void requireCurrentPlayer(Long gameId, Long playerId, HttpSession session) {
+        var currentUser = sessionAuthService.currentUser(session)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required"));
+
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new IllegalArgumentException("Game not found"));
+
+        if (!Objects.equals(game.getCurrentPlayerId(), playerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "It is not your turn");
+        }
+
+        Player player = playerRepository.findById(playerId)
+                .orElseThrow(() -> new IllegalArgumentException("Player not found"));
+        if (!Objects.equals(player.getGameId(), gameId)) {
+            throw new IllegalArgumentException("Player does not belong to this game");
+        }
+        if (!Objects.equals(player.getUserId(), currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "It is not your turn");
+        }
     }
 
     private int[] parseDiceCsv(String csv) {

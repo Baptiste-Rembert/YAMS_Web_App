@@ -27,22 +27,22 @@ public class ScorecardInvalidScoreTest {
     @Test
     void invalidScoreRejected() throws Exception {
         String base = "http://localhost:" + port;
+        HttpHeaders authHeaders = loginAndGetCookie(base, "bob");
 
         ResponseEntity<Game> createResp = restTemplate.postForEntity(base + "/api/games", null, Game.class);
         assertEquals(200, createResp.getStatusCodeValue());
         Long gameId = createResp.getBody().getId();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpHeaders headers = jsonHeaders(authHeaders);
         String joinBody = "{\"username\":\"bob\"}";
         ResponseEntity<Player> joinResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/join", new HttpEntity<>(joinBody, headers), Player.class);
         assertEquals(200, joinResp.getStatusCodeValue());
         Long playerId = joinResp.getBody().getId();
 
-        ResponseEntity<String> startResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/start", null, String.class);
+        ResponseEntity<String> startResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/start", new HttpEntity<>(authHeaders), String.class);
         assertEquals(200, startResp.getStatusCodeValue());
 
-        ResponseEntity<Turn> rollResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/turns/roll", null, Turn.class);
+        ResponseEntity<Turn> rollResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/turns/roll", new HttpEntity<>(authHeaders), Turn.class);
         assertEquals(200, rollResp.getStatusCodeValue());
         Turn turn = rollResp.getBody();
         String diceCsv = (turn == null) ? null : turn.getDice();
@@ -70,5 +70,28 @@ public class ScorecardInvalidScoreTest {
         String validBody = String.format("{\"category\":\"ONES\",\"score\":%d}", expectedOnes);
         ResponseEntity<String> okResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/scorecard/" + playerId + "/score", new HttpEntity<>(validBody, headers), String.class);
         assertEquals(200, okResp.getStatusCodeValue());
+    }
+
+    private HttpHeaders loginAndGetCookie(String base, String username) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<String> loginResp = restTemplate.postForEntity(base + "/api/auth/login", new HttpEntity<>(("{\"username\":\"" + username + "\"}"), headers), String.class);
+        assertEquals(200, loginResp.getStatusCodeValue());
+        HttpHeaders cookieHeaders = new HttpHeaders();
+        cookieHeaders.add(HttpHeaders.COOKIE, extractSessionCookie(loginResp.getHeaders().getFirst(HttpHeaders.SET_COOKIE)));
+        return cookieHeaders;
+    }
+
+    private HttpHeaders jsonHeaders(HttpHeaders cookieHeaders) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.putAll(cookieHeaders);
+        return headers;
+    }
+
+    private String extractSessionCookie(String setCookieHeader) {
+        if (setCookieHeader == null || setCookieHeader.isBlank()) return null;
+        int separator = setCookieHeader.indexOf(';');
+        return separator >= 0 ? setCookieHeader.substring(0, separator) : setCookieHeader;
     }
 }

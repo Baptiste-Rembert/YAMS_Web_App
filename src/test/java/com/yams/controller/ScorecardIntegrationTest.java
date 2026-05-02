@@ -30,18 +30,19 @@ public class ScorecardIntegrationTest {
     void updateAndGetScorecard() throws Exception {
         String base = "http://localhost:" + port;
 
+        HttpHeaders authHeaders = loginAndGetCookie(base, "carol");
+
         ResponseEntity<Game> createResp = restTemplate.postForEntity(base + "/api/games", null, Game.class);
         assertEquals(200, createResp.getStatusCodeValue());
         Long gameId = createResp.getBody().getId();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpHeaders headers = jsonHeaders(authHeaders);
         String joinBody = "{\"username\":\"carol\"}";
         ResponseEntity<Player> joinResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/join", new HttpEntity<>(joinBody, headers), Player.class);
         assertEquals(200, joinResp.getStatusCodeValue());
         Long playerId = joinResp.getBody().getId();
 
-        ResponseEntity<String> startResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/start", null, String.class);
+        ResponseEntity<String> startResp = restTemplate.postForEntity(base + "/api/games/" + gameId + "/start", new HttpEntity<>(authHeaders), String.class);
         assertEquals(200, startResp.getStatusCodeValue());
 
         String scoreBody = "{\"category\":\"ONES\",\"score\":5}";
@@ -65,5 +66,28 @@ public class ScorecardIntegrationTest {
         assertEquals(0, sumNode.get("upperBonus").asInt());
         assertEquals(0, sumNode.get("lowerTotal").asInt());
         assertEquals(5, sumNode.get("total").asInt());
+    }
+
+    private HttpHeaders loginAndGetCookie(String base, String username) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<String> loginResp = restTemplate.postForEntity(base + "/api/auth/login", new HttpEntity<>(("{\"username\":\"" + username + "\"}"), headers), String.class);
+        assertEquals(200, loginResp.getStatusCodeValue());
+        HttpHeaders cookieHeaders = new HttpHeaders();
+        cookieHeaders.add(HttpHeaders.COOKIE, extractSessionCookie(loginResp.getHeaders().getFirst(HttpHeaders.SET_COOKIE)));
+        return cookieHeaders;
+    }
+
+    private HttpHeaders jsonHeaders(HttpHeaders cookieHeaders) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.putAll(cookieHeaders);
+        return headers;
+    }
+
+    private String extractSessionCookie(String setCookieHeader) {
+        if (setCookieHeader == null || setCookieHeader.isBlank()) return null;
+        int separator = setCookieHeader.indexOf(';');
+        return separator >= 0 ? setCookieHeader.substring(0, separator) : setCookieHeader;
     }
 }

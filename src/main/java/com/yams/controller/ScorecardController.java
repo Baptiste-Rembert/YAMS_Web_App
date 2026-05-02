@@ -3,6 +3,7 @@ package com.yams.controller;
 import com.yams.model.Scorecard;
 import com.yams.service.ScorecardService;
 import com.yams.service.ScorecardSummary;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,8 +24,8 @@ public class ScorecardController {
     }
 
     @PostMapping("/{playerId}/score")
-    public Scorecard updateScore(@PathVariable Long gameId, @PathVariable Long playerId, @RequestBody ScoreUpdateRequest req) {
-        return scorecardService.updateScore(gameId, playerId, req.category(), req.score());
+    public Scorecard updateScore(@PathVariable Long gameId, @PathVariable Long playerId, @RequestBody ScoreUpdateRequest req, HttpSession session) {
+        return scorecardService.updateScore(gameId, playerId, req.category(), req.score(), session);
     }
 
     @GetMapping("/{playerId}/summary")

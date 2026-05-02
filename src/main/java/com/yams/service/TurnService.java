@@ -7,8 +7,11 @@ import com.yams.model.Turn;
 import com.yams.repository.GameRepository;
 import com.yams.repository.PlayerRepository;
 import com.yams.repository.TurnRepository;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
@@ -19,20 +22,22 @@ public class TurnService {
     private final PlayerRepository playerRepository;
     private final TurnRepository turnRepository;
     private final GameEventService eventService;
+    private final SessionAuthService sessionAuthService;
 
-    public TurnService(GameRepository gameRepository, PlayerRepository playerRepository, TurnRepository turnRepository, GameEventService eventService) {
+    public TurnService(GameRepository gameRepository, PlayerRepository playerRepository, TurnRepository turnRepository, GameEventService eventService, SessionAuthService sessionAuthService) {
         this.gameRepository = gameRepository;
         this.playerRepository = playerRepository;
         this.turnRepository = turnRepository;
         this.eventService = eventService;
+        this.sessionAuthService = sessionAuthService;
     }
 
     @Transactional
-    public Turn rollDice(Long gameId) {
+    public Turn rollDice(Long gameId, HttpSession session) {
         Game g = gameRepository.findById(gameId).orElseThrow(() -> new IllegalArgumentException("Game not found"));
         if (!g.isStarted()) throw new IllegalStateException("Game not started");
-        Long playerId = g.getCurrentPlayerId();
-        if (playerId == null) throw new IllegalStateException("No current player set");
+        Player currentPlayer = requireCurrentPlayer(gameId, session);
+        Long playerId = currentPlayer.getId();
 
         Optional<Turn> opt = turnRepository.findFirstByGameIdAndPlayerIdAndCompletedFalse(gameId, playerId);
         Turn t;
@@ -60,18 +65,18 @@ public class TurnService {
         data.put("playerId", playerId);
         data.put("dice", Arrays.stream(diceArr).boxed().toList());
         data.put("rolls", saved.getRolls());
-        GameEvent evt = new GameEvent("ROLLED", gameId, data);
+        GameEvent evt = new GameEvent("TURN_ROLLED", gameId, data);
         eventService.sendEvent(gameId, evt);
 
         return saved;
     }
 
     @Transactional
-    public Turn rerollDice(Long gameId, int[] indices) {
+    public Turn rerollDice(Long gameId, int[] indices, HttpSession session) {
         Game g = gameRepository.findById(gameId).orElseThrow(() -> new IllegalArgumentException("Game not found"));
         if (!g.isStarted()) throw new IllegalStateException("Game not started");
-        Long playerId = g.getCurrentPlayerId();
-        if (playerId == null) throw new IllegalStateException("No current player set");
+        Player currentPlayer = requireCurrentPlayer(gameId, session);
+        Long playerId = currentPlayer.getId();
 
         Turn t = turnRepository.findFirstByGameIdAndPlayerIdAndCompletedFalse(gameId, playerId)
                 .orElseThrow(() -> new IllegalStateException("No active turn to reroll"));
@@ -98,17 +103,18 @@ public class TurnService {
         data.put("playerId", playerId);
         data.put("dice", Arrays.stream(diceArr).boxed().toList());
         data.put("rolls", saved.getRolls());
-        GameEvent evt = new GameEvent("REROLLED", gameId, data);
+        GameEvent evt = new GameEvent("TURN_REROLLED", gameId, data);
         eventService.sendEvent(gameId, evt);
 
         return saved;
     }
 
     @Transactional
-    public Game endTurn(Long gameId) {
+    public Game endTurn(Long gameId, HttpSession session) {
         Game g = gameRepository.findById(gameId).orElseThrow(() -> new IllegalArgumentException("Game not found"));
         if (!g.isStarted()) throw new IllegalStateException("Game not started");
-        Long playerId = g.getCurrentPlayerId();
+        Player currentPlayer = requireCurrentPlayer(gameId, session);
+        Long playerId = currentPlayer.getId();
         List<Player> players = playerRepository.findByGameId(gameId);
         if (players.isEmpty()) throw new IllegalStateException("No players");
 
@@ -137,5 +143,23 @@ public class TurnService {
         eventService.sendEvent(gameId, evt);
 
         return savedGame;
+    }
+
+    private Player requireCurrentPlayer(Long gameId, HttpSession session) {
+        var currentUser = sessionAuthService.currentUser(session)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required"));
+
+        Game g = gameRepository.findById(gameId).orElseThrow(() -> new IllegalArgumentException("Game not found"));
+        Long currentPlayerId = g.getCurrentPlayerId();
+        if (currentPlayerId == null) {
+            throw new IllegalStateException("No current player set");
+        }
+
+        Player currentPlayer = playerRepository.findById(currentPlayerId)
+                .orElseThrow(() -> new IllegalStateException("Current player not found"));
+        if (!Objects.equals(currentPlayer.getUserId(), currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "It is not your turn");
+        }
+        return currentPlayer;
     }
 }

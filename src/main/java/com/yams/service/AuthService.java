@@ -16,13 +16,22 @@ public class AuthService {
         this.userRepository = userRepository;
     }
 
-    /**
-     * Logique d'identification : 
-     * Si l'utilisateur existe, on le récupère. 
-     * Sinon, on le crée automatiquement.
-     */
     @Transactional
     public User login(String username) {
+        return findOrCreate(username);
+    }
+
+    @Transactional
+    public User register(String username) {
+        return findOrCreate(username);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
+    private User findOrCreate(String username) {
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException("Le pseudo ne peut pas être vide.");
         }

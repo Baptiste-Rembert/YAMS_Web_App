@@ -35,10 +35,32 @@ public class AuthControllerIntegrationTest {
         assertEquals(200, loginResp.getStatusCodeValue());
         assertNotNull(loginResp.getBody());
         assertEquals("itestuser", loginResp.getBody().getUsername());
+        String sessionCookie = extractSessionCookie(loginResp.getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+        assertNotNull(sessionCookie);
+
+        HttpHeaders cookieHeaders = new HttpHeaders();
+        cookieHeaders.add(HttpHeaders.COOKIE, sessionCookie);
+        ResponseEntity<User> meResp = restTemplate.exchange(base + "/api/auth/me", org.springframework.http.HttpMethod.GET, new HttpEntity<>(cookieHeaders), User.class);
+        assertEquals(200, meResp.getStatusCodeValue());
+        assertEquals("itestuser", meResp.getBody().getUsername());
 
         ResponseEntity<User> regResp = restTemplate.postForEntity(base + "/api/auth/register", entity, User.class);
         assertEquals(200, regResp.getStatusCodeValue());
         assertNotNull(regResp.getBody());
         assertEquals("itestuser", regResp.getBody().getUsername());
+
+        ResponseEntity<Void> logoutResp = restTemplate.postForEntity(base + "/api/auth/logout", new HttpEntity<>(cookieHeaders), Void.class);
+        assertEquals(204, logoutResp.getStatusCodeValue());
+
+        ResponseEntity<User> meAfterLogout = restTemplate.exchange(base + "/api/auth/me", org.springframework.http.HttpMethod.GET, new HttpEntity<>(cookieHeaders), User.class);
+        assertEquals(401, meAfterLogout.getStatusCodeValue());
+    }
+
+    private String extractSessionCookie(String setCookieHeader) {
+        if (setCookieHeader == null || setCookieHeader.isBlank()) {
+            return null;
+        }
+        int separator = setCookieHeader.indexOf(';');
+        return separator >= 0 ? setCookieHeader.substring(0, separator) : setCookieHeader;
     }
 }
