@@ -40,3 +40,8 @@ desktop.ini
 /frontend/dist/
 /frontend/.vite/
 /frontend/.cache/
+
+# Maven build / test artifacts
+target/
+target/surefire-reports/
+target/failsafe-reports/
