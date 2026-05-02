@@ -1,2 +1,42 @@
 .venv
+
+# Report folder
 /rapports
+
+# Java / Maven
+/target/
+*.class
+*.jar
+*.war
+*.ear
+hs_err_pid*
+*.log
+/logs/
+
+# Spring Boot / build output
+.spring-boot-devtools/
+
+# IDEs and editors
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment files
+.env
+.env.*
+
+# Frontend build artifacts
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+/frontend/.cache/
