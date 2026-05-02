@@ -6,7 +6,12 @@ Racine du projet pour l'application Yams (backend Spring Boot + frontend React/V
 
 - Lancer le backend (Windows PowerShell):
 
-```powershell
+- Lancer le backend (Linux/macOS):
+
+```bash
+# (optionnel) export JAVA_HOME si nécessaire, par ex. :
+# export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+# depuis la racine du projet :
 mvn -DskipTests spring-boot:run
 ```
 
@@ -21,7 +26,7 @@ npm run dev
 - Construire et exécuter les tests (backend):
 
 ```bash
-cd YAMS_Web_App
+# depuis la racine du projet :
 mvn test
 ```
 
