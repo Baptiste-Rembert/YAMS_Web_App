@@ -2,6 +2,14 @@
 
 Racine du projet pour l'application Yams (backend Spring Boot + frontend React/Vite).
 
+## État d'avancement du projet
+
+Le projet suit une méthodologie de développement itérative. Voici l'état actuel des modules :
+
+*   **Logique métier (Backend) :** 100% - Moteur de jeu complet, calcul des scores et règles du Yams validés par tests unitaires.
+*   **Persistance des données :** 80% - Couche JPA/SQL en cours de finalisation (gestion des historiques et persistance des sessions via JDBC).
+*   **Mode Multijoueur :** 40% - Développement de la couche temps-réel via WebSockets (STOMP). La synchronisation des états de jeu entre clients est l'objectif majeur de la version actuelle.
+
 ## Commandes utiles
 
 - Lancer le backend (Windows PowerShell):
