@@ -12,8 +12,6 @@ Le projet suit une méthodologie de développement itérative. Voici l'état act
 
 ## Commandes utiles
 
-- Lancer le backend (Windows PowerShell):
-
 - Lancer le backend (Linux/macOS):
 
 ```bash
